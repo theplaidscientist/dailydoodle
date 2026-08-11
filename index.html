@@ -92,8 +92,21 @@
   .card-coral { background: var(--c-coral-50); color: var(--c-coral-800); }
   .card-purple { background: var(--c-purple-50); color: var(--c-purple-800); }
   #fill-blank { text-align: center; font-size: 16px; min-height: 24px; margin: 0 0 2rem; }
-  footer { text-align: center; font-size: 12px; color: var(--text-muted); }
+  footer { text-align: center; font-size: 12px; color: var(--text-muted); margin-bottom: 0.75rem; }
   footer em { font-style: italic; }
+
+  .counter-wrap { display: flex; justify-content: center; margin: 0.75rem 0; }
+  .counter-box {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #111; border: 2px solid #444; border-radius: 4px;
+    padding: 6px 12px;
+  }
+  .counter-label { font-family: monospace; font-size: 10px; color: #9a9a9a; letter-spacing: 0.05em; }
+  .counter-digits {
+    font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold;
+    color: #39ff14; background: #000; padding: 2px 6px; border-radius: 2px;
+    letter-spacing: 2px;
+  }
 
   .toggle-switch { position: relative; display: inline-block; width: 32px; height: 18px; flex-shrink: 0; }
   .toggle-switch input { opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; position: relative; z-index: 2; }
@@ -119,6 +132,13 @@
 
 <h1>Daily Doodle</h1>
 <p class="subtitle">Ideas for your Noodle!</p>
+
+<div class="counter-wrap">
+  <div class="counter-box">
+    <span class="counter-label">DOODLE IDEAS<br>GENERATED</span>
+    <span class="counter-digits" id="hit-counter">------</span>
+  </div>
+</div>
 
 <p class="instruction">Toggle categories on or off, add your own items, then hit spin.</p>
 
@@ -257,6 +277,7 @@ document.getElementById('spin-btn').onclick = () => {
   }
   renderResultRow();
   fillBlank.textContent = '';
+  incrementCounter();
   const finished = {};
   let completed = 0;
   active.forEach((k, i) => {
@@ -288,6 +309,27 @@ document.getElementById('spin-btn').onclick = () => {
 
 renderColumns();
 renderResultRow();
+
+// --- Old-school hit counter ---
+const COUNTER_KEY = 'plaidlabs_daily_doodle_generations';
+const counterEl = document.getElementById('hit-counter');
+
+function formatCount(n) {
+  return String(n).padStart(6, '0');
+}
+
+fetch(`https://countapi.mileshilliard.com/api/v1/get/${COUNTER_KEY}`)
+  .then(r => r.json())
+  .then(data => { counterEl.textContent = formatCount(data.value || 0); })
+  .catch(() => { counterEl.textContent = '------'; });
+
+function incrementCounter() {
+  fetch(`https://countapi.mileshilliard.com/api/v1/hit/${COUNTER_KEY}`)
+    .then(r => r.json())
+    .then(data => { counterEl.textContent = formatCount(data.value); })
+    .catch(() => {});
+}
+
 </script>
 
 </body>
