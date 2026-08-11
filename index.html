@@ -51,6 +51,12 @@
     margin-bottom: 8px;
   }
   .col-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+  .col-actions { display: flex; align-items: center; gap: 2px; }
+  .icon-btn {
+    border: none; background: none; cursor: pointer; font-size: 13px;
+    padding: 2px 5px; color: var(--text-muted); border-radius: 6px; line-height: 1;
+  }
+  .icon-btn:hover { background: var(--surface-1); }
   .item-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
   .item-row {
     display: flex;
@@ -96,6 +102,9 @@
   .card-amber  { background: #FDF0D5; color: #7A5205; }
   .card-green  { background: #DFF2E1; color: #1E5631; }
   .card-navy   { background: #E1E4FB; color: #242B5C; }
+  .card-cyan   { background: #D6F3F7; color: #0B5C66; }
+  .card-gold   { background: #FFF3C4; color: #6B5900; }
+  .card-tan    { background: #F0E4D2; color: #6B4A22; }
   #fill-blank { text-align: center; font-size: 16px; min-height: 24px; margin: 0 0 2rem; }
   footer { text-align: center; font-size: 12px; color: var(--text-muted); margin-bottom: 0.75rem; }
   footer em { font-style: italic; }
@@ -222,7 +231,7 @@
   <ul id="history-list"></ul>
 </details>
 
-<footer><em>Brought to you by the Plaid Scientist from Plaid Labs</em> v 0.8</footer>
+<footer><em>Brought to you by the Plaid Scientist from Plaid Labs</em> v 1.2</footer>
 
 <script>
 const categories = {
@@ -231,9 +240,14 @@ const categories = {
   prop:    { label: "Prop",       icon: "🎁", color: "card-purple", items: ["Umbrella","Teacup","Boombox","Skateboard","Lantern","Camera"], active: true },
   vehicle: { label: "Vehicle",    icon: "🚗", color: "card-amber",  items: ["Spaceship","Car","Zeppelin","Scooter","Bike","Boat"], active: true },
   style:   { label: "Style",      icon: "🎨", color: "card-green",  items: ["Anime","Disney-style","Looney Tunes","Chibi","Comic Book","Retro 90s Cartoon"], active: true },
-  medium:  { label: "Medium",     icon: "✏️", color: "card-navy",   items: ["Pencil","Digital","Ink","Color","Sketch","Watercolor"], active: true }
+  medium:  { label: "Medium",     icon: "✏️", color: "card-navy",   items: ["Pencil","Digital","Ink","Color","Sketch","Watercolor"], active: true },
+  outfit:  { label: "Outfit",     icon: "👕", color: "card-tan",    items: ["Hoodie","Sweater","T-Shirt","Superhero Spandex","Pajamas","Tuxedo"], active: true },
+  mood:    { label: "Mood",       icon: "😊", color: "card-gold",   items: ["Happy","Sad","Angry","Sleepy","Surprised","Nervous"], active: true },
+  setting: { label: "Setting",    icon: "🏞️", color: "card-cyan",   items: ["Woods","Space","Inside","Beach","Castle","City Street"], active: true }
 };
 const keys = Object.keys(categories);
+const DEFAULT_ITEMS = {};
+keys.forEach(k => { DEFAULT_ITEMS[k] = [...categories[k].items]; });
 const CORE_KEYS = ['animal', 'job', 'prop'];
 let mode = 'beginner';
 let avoidRepeats = false;
@@ -253,12 +267,16 @@ function renderColumns() {
     <div class="col-card cat-card ${isActive ? '' : 'inactive'}" id="card-wrap-${key}">
       <div class="col-header">
         <div class="col-label"><span>${cat.icon}</span>${cat.label}</div>
-        ${showToggle ? `
-        <label class="toggle-switch">
-          <input type="checkbox" data-key="${key}" ${cat.active ? 'checked' : ''} aria-label="Include ${cat.label}">
-          <span class="track"></span>
-          <span class="thumb"></span>
-        </label>` : ''}
+        <div class="col-actions">
+          <button id="clear-${key}" class="icon-btn" title="Clear all items" aria-label="Clear ${cat.label} items">🗑</button>
+          <button id="restore-${key}" class="icon-btn" title="Restore suggested items" aria-label="Restore ${cat.label} suggestions">↺</button>
+          ${showToggle ? `
+          <label class="toggle-switch">
+            <input type="checkbox" data-key="${key}" ${cat.active ? 'checked' : ''} aria-label="Include ${cat.label}">
+            <span class="track"></span>
+            <span class="thumb"></span>
+          </label>` : ''}
+        </div>
       </div>
       <div id="list-${key}" class="item-list"></div>
       <div class="add-row">
@@ -272,6 +290,8 @@ function renderColumns() {
     renderItems(key);
     document.getElementById('add-' + key).onclick = () => addItem(key);
     document.getElementById('input-' + key).addEventListener('keydown', e => { if (e.key === 'Enter') addItem(key); });
+    document.getElementById('clear-' + key).onclick = () => clearCategory(key);
+    document.getElementById('restore-' + key).onclick = () => restoreCategory(key);
     const toggleInput = wrap.querySelector(`input[data-key="${key}"]`);
     if (toggleInput) {
       toggleInput.addEventListener('change', e => {
@@ -327,6 +347,18 @@ function addItem(key) {
   renderItems(key);
 }
 
+function clearCategory(key) {
+  categories[key].items = [];
+  categories[key].remaining = null;
+  renderItems(key);
+}
+
+function restoreCategory(key) {
+  categories[key].items = [...DEFAULT_ITEMS[key]];
+  categories[key].remaining = null;
+  renderItems(key);
+}
+
 function activeKeys() {
   if (mode === 'beginner') return CORE_KEYS;
   return keys.filter(k => categories[k].active);
@@ -369,18 +401,22 @@ function buildSentence(active, result, htmlMode) {
   const lead = [];
   if (active.includes('medium')) lead.push(wrap(result.medium));
   if (active.includes('style')) lead.push(wrap(result.style) + '-style');
-  const leadStr = lead.length ? lead.join(' ') + ' drawing of' : '';
+  const leadStr = lead.length ? lead.join(' ') + ' drawing of ' : '';
 
   const subject = [];
   if (active.includes('job')) subject.push(wrap(result.job));
   if (active.includes('animal')) subject.push(wrap(result.animal));
   const subjectStr = subject.length ? subject.join(' ') : 'doodle';
 
-  let sentence = `Your daily doodle idea is a ${leadStr ? leadStr + ' ' : ''}${subjectStr}`;
-  if (active.includes('prop')) sentence += ` with a ${wrap(result.prop)}`;
-  if (active.includes('vehicle')) {
-    sentence += active.includes('prop') ? `, riding a ${wrap(result.vehicle)}` : ` riding a ${wrap(result.vehicle)}`;
-  }
+  const extras = [];
+  if (active.includes('outfit')) extras.push(`wearing a ${wrap(result.outfit)}`);
+  if (active.includes('prop')) extras.push(`with a ${wrap(result.prop)}`);
+  if (active.includes('vehicle')) extras.push(`riding a ${wrap(result.vehicle)}`);
+  if (active.includes('mood')) extras.push(`looking ${wrap(result.mood)}`);
+  if (active.includes('setting')) extras.push(`in the ${wrap(result.setting)}`);
+
+  let sentence = `Your daily doodle idea is a ${leadStr}${subjectStr}`;
+  if (extras.length) sentence += ' ' + extras.join(', ');
   sentence += '.';
   return sentence;
 }
