@@ -126,6 +126,44 @@
   .cat-card.inactive .col-header { margin-bottom: 0; }
   .cat-card.inactive .item-list, .cat-card.inactive .add-row { display: none; }
 
+  .mode-toggle { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; }
+  .mode-btn {
+    border: 0.5px solid var(--border); background: var(--surface-2);
+    border-radius: 999px; padding: 6px 16px; font-size: 13px;
+    cursor: pointer; color: var(--text-secondary);
+  }
+  .mode-btn.active { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
+
+  .settings-row {
+    display: flex; justify-content: center; align-items: center;
+    gap: 14px; flex-wrap: wrap; margin-bottom: 1.25rem;
+  }
+  .repeat-toggle {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-secondary); cursor: pointer;
+  }
+  .repeat-toggle input { cursor: pointer; }
+  .sound-btn {
+    border: 0.5px solid var(--border); background: var(--surface-2);
+    border-radius: 999px; padding: 5px 12px; font-size: 12px;
+    cursor: pointer; color: var(--text-secondary);
+  }
+  .sound-btn.muted { opacity: 0.55; }
+
+  .share-wrap { display: none; justify-content: center; align-items: center; gap: 10px; margin: -1rem 0 1.5rem; }
+  #copy-btn {
+    border: 0.5px solid var(--border); background: var(--surface-2);
+    border-radius: var(--radius); padding: 7px 16px; font-size: 13px;
+    cursor: pointer; color: var(--text-primary);
+  }
+  #copy-btn:hover { background: var(--surface-1); }
+  #copy-feedback { font-size: 12px; color: var(--text-secondary); }
+
+  .history-wrap { display: none; max-width: 420px; margin: 0 auto 2rem; font-size: 13px; color: var(--text-secondary); }
+  .history-wrap summary { cursor: pointer; text-align: center; font-weight: 500; padding: 4px 0; }
+  #history-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  #history-list li { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 6px 10px; }
+
   @media (max-width: 480px) {
     body { padding: 1.5rem 0.75rem; }
     h1 { font-size: 20px; }
@@ -150,7 +188,19 @@
   </div>
 </div>
 
-<p class="instruction">Toggle categories on or off, add your own items, then hit spin.</p>
+<p class="instruction">Add your own items, then hit spin.</p>
+
+<div class="mode-toggle">
+  <button class="mode-btn active" data-mode="beginner">Beginner</button>
+  <button class="mode-btn" data-mode="advanced">Advanced</button>
+</div>
+
+<div class="settings-row">
+  <label class="repeat-toggle">
+    <input type="checkbox" id="avoid-repeats"> Avoid repeats until all shown
+  </label>
+  <button id="sound-toggle" class="sound-btn" aria-pressed="true" aria-label="Toggle sound effects">🔊 Sound</button>
+</div>
 
 <div id="columns"></div>
 
@@ -161,6 +211,16 @@
 <div id="result-row"></div>
 
 <p id="fill-blank"></p>
+
+<div class="share-wrap" id="share-wrap">
+  <button id="copy-btn">Copy result</button>
+  <span id="copy-feedback"></span>
+</div>
+
+<details class="history-wrap" id="history-wrap">
+  <summary>Recent doodles</summary>
+  <ul id="history-list"></ul>
+</details>
 
 <footer><em>Brought to you by the Plaid Scientist from Plaid Labs</em> v 0.8</footer>
 
@@ -174,20 +234,31 @@ const categories = {
   medium:  { label: "Medium",     icon: "✏️", color: "card-navy",   items: ["Pencil","Digital","Ink","Color","Sketch","Watercolor"], active: true }
 };
 const keys = Object.keys(categories);
+const CORE_KEYS = ['animal', 'job', 'prop'];
+let mode = 'beginner';
+let avoidRepeats = false;
+let history = [];
+let currentCount = null;
+let currentPlainResult = '';
+let soundEnabled = true;
 
 function renderColumns() {
   const wrap = document.getElementById('columns');
-  wrap.innerHTML = keys.map(key => {
+  const displayKeys = mode === 'beginner' ? CORE_KEYS : keys;
+  wrap.innerHTML = displayKeys.map(key => {
     const cat = categories[key];
+    const isActive = mode === 'beginner' ? true : cat.active;
+    const showToggle = mode === 'advanced';
     return `
-    <div class="col-card cat-card ${cat.active ? '' : 'inactive'}" id="card-wrap-${key}">
+    <div class="col-card cat-card ${isActive ? '' : 'inactive'}" id="card-wrap-${key}">
       <div class="col-header">
         <div class="col-label"><span>${cat.icon}</span>${cat.label}</div>
+        ${showToggle ? `
         <label class="toggle-switch">
           <input type="checkbox" data-key="${key}" ${cat.active ? 'checked' : ''} aria-label="Include ${cat.label}">
           <span class="track"></span>
           <span class="thumb"></span>
-        </label>
+        </label>` : ''}
       </div>
       <div id="list-${key}" class="item-list"></div>
       <div class="add-row">
@@ -197,18 +268,37 @@ function renderColumns() {
     </div>`;
   }).join('');
 
-  keys.forEach(key => {
+  displayKeys.forEach(key => {
     renderItems(key);
     document.getElementById('add-' + key).onclick = () => addItem(key);
     document.getElementById('input-' + key).addEventListener('keydown', e => { if (e.key === 'Enter') addItem(key); });
-    wrap.querySelector(`input[data-key="${key}"]`).addEventListener('change', e => {
-      categories[key].active = e.target.checked;
-      document.getElementById('card-wrap-' + key).classList.toggle('inactive', !categories[key].active);
-      renderResultRow();
-      fillBlank.textContent = '';
-    });
+    const toggleInput = wrap.querySelector(`input[data-key="${key}"]`);
+    if (toggleInput) {
+      toggleInput.addEventListener('change', e => {
+        categories[key].active = e.target.checked;
+        document.getElementById('card-wrap-' + key).classList.toggle('inactive', !categories[key].active);
+        renderResultRow();
+        fillBlank.textContent = '';
+        hideShare();
+      });
+    }
   });
 }
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    mode = btn.getAttribute('data-mode');
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    renderColumns();
+    renderResultRow();
+    fillBlank.textContent = '';
+    hideShare();
+  });
+});
+
+document.getElementById('avoid-repeats').addEventListener('change', e => {
+  avoidRepeats = e.target.checked;
+});
 
 function renderItems(key) {
   const list = document.getElementById('list-' + key);
@@ -237,7 +327,29 @@ function addItem(key) {
   renderItems(key);
 }
 
-function activeKeys() { return keys.filter(k => categories[k].active); }
+function activeKeys() {
+  if (mode === 'beginner') return CORE_KEYS;
+  return keys.filter(k => categories[k].active);
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function getFinalPick(key) {
+  if (!avoidRepeats) {
+    return categories[key].items[Math.floor(Math.random() * categories[key].items.length)];
+  }
+  if (!categories[key].remaining || categories[key].remaining.length === 0) {
+    categories[key].remaining = shuffle(categories[key].items);
+  }
+  return categories[key].remaining.pop();
+}
 
 const resultRow = document.getElementById('result-row');
 function renderResultRow() {
@@ -251,22 +363,23 @@ function renderResultRow() {
 
 const fillBlank = document.getElementById('fill-blank');
 
-function buildSentence(active, result) {
+function buildSentence(active, result, htmlMode) {
   if (active.length === 0) return '';
+  const wrap = s => htmlMode ? `<strong>${s}</strong>` : s;
   const lead = [];
-  if (active.includes('medium')) lead.push(`<strong>${result.medium}</strong>`);
-  if (active.includes('style')) lead.push(`<strong>${result.style}</strong>-style`);
+  if (active.includes('medium')) lead.push(wrap(result.medium));
+  if (active.includes('style')) lead.push(wrap(result.style) + '-style');
   const leadStr = lead.length ? lead.join(' ') + ' drawing of' : '';
 
   const subject = [];
-  if (active.includes('job')) subject.push(`<strong>${result.job}</strong>`);
-  if (active.includes('animal')) subject.push(`<strong>${result.animal}</strong>`);
+  if (active.includes('job')) subject.push(wrap(result.job));
+  if (active.includes('animal')) subject.push(wrap(result.animal));
   const subjectStr = subject.length ? subject.join(' ') : 'doodle';
 
   let sentence = `Your daily doodle idea is a ${leadStr ? leadStr + ' ' : ''}${subjectStr}`;
-  if (active.includes('prop')) sentence += ` with a <strong>${result.prop}</strong>`;
+  if (active.includes('prop')) sentence += ` with a ${wrap(result.prop)}`;
   if (active.includes('vehicle')) {
-    sentence += active.includes('prop') ? `, riding a <strong>${result.vehicle}</strong>` : ` riding a <strong>${result.vehicle}</strong>`;
+    sentence += active.includes('prop') ? `, riding a ${wrap(result.vehicle)}` : ` riding a ${wrap(result.vehicle)}`;
   }
   sentence += '.';
   return sentence;
@@ -297,7 +410,8 @@ document.getElementById('spin-btn').onclick = () => {
     let ticks = 0;
     const totalTicks = 12;
     function tick() {
-      const pick = categories[k].items[Math.floor(Math.random() * categories[k].items.length)];
+      const isFinal = ticks === totalTicks - 1;
+      const pick = isFinal ? getFinalPick(k) : categories[k].items[Math.floor(Math.random() * categories[k].items.length)];
       text.textContent = pick;
       card.style.transform = ticks % 2 === 0 ? 'rotateX(90deg)' : 'rotateX(0deg)';
       ticks++;
@@ -310,9 +424,12 @@ document.getElementById('spin-btn').onclick = () => {
         finished[k] = pick;
         completed++;
         if (completed === active.length) {
-          fillBlank.innerHTML = buildSentence(active, finished);
+          fillBlank.innerHTML = buildSentence(active, finished, true);
           clearInterval(boopInterval);
           playTada();
+          const plainText = buildSentence(active, finished, false);
+          showShare(plainText);
+          addToHistory(plainText);
         }
       }
     }
@@ -322,6 +439,42 @@ document.getElementById('spin-btn').onclick = () => {
 
 renderColumns();
 renderResultRow();
+
+// --- Share / copy result ---
+function showShare(text) {
+  currentPlainResult = text;
+  document.getElementById('share-wrap').style.display = 'flex';
+  document.getElementById('copy-feedback').textContent = '';
+}
+function hideShare() {
+  document.getElementById('share-wrap').style.display = 'none';
+}
+document.getElementById('copy-btn').addEventListener('click', () => {
+  let shareText = currentPlainResult;
+  if (currentCount != null) shareText += ` (Daily Doodle #${currentCount})`;
+  shareText += ' — https://theplaidscientist.github.io/dailydoodle/';
+  navigator.clipboard.writeText(shareText).then(() => {
+    const fb = document.getElementById('copy-feedback');
+    fb.textContent = 'Copied!';
+    setTimeout(() => { fb.textContent = ''; }, 2000);
+  }).catch(() => {
+    document.getElementById('copy-feedback').textContent = 'Could not copy';
+  });
+});
+
+// --- Recent doodle history (last 3) ---
+function addToHistory(text) {
+  history.unshift(text);
+  history = history.slice(0, 3);
+  renderHistory();
+}
+function renderHistory() {
+  const wrap = document.getElementById('history-wrap');
+  const list = document.getElementById('history-list');
+  if (history.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  list.innerHTML = history.map(h => `<li>${h}</li>`).join('');
+}
 
 // --- Retro sound effects (synthesized, no audio files needed) ---
 function getAudioCtx() {
@@ -334,6 +487,7 @@ function getAudioCtx() {
 }
 
 function playBoop() {
+  if (!soundEnabled) return;
   const ctx = getAudioCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -347,6 +501,7 @@ function playBoop() {
 }
 
 function playTada() {
+  if (!soundEnabled) return;
   const ctx = getAudioCtx();
   const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
   notes.forEach((freq, i) => {
@@ -364,6 +519,14 @@ function playTada() {
   });
 }
 
+document.getElementById('sound-toggle').addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('sound-toggle');
+  btn.textContent = soundEnabled ? '🔊 Sound' : '🔇 Sound';
+  btn.setAttribute('aria-pressed', String(soundEnabled));
+  btn.classList.toggle('muted', !soundEnabled);
+});
+
 // --- Old-school hit counter (Firebase Realtime Database) ---
 const DB_URL = 'https://daily-doodle-b7c57-default-rtdb.firebaseio.com';
 const COUNTER_PATH = '/counters/dailyDoodle.json';
@@ -375,7 +538,7 @@ function formatCount(n) {
 
 fetch(`${DB_URL}${COUNTER_PATH}`)
   .then(r => r.json())
-  .then(value => { counterEl.textContent = formatCount(value || 0); })
+  .then(value => { currentCount = value || 0; counterEl.textContent = formatCount(currentCount); })
   .catch(err => { console.error('Doodle counter fetch failed:', err); counterEl.textContent = '------'; });
 
 function incrementCounter() {
@@ -385,7 +548,7 @@ function incrementCounter() {
     body: JSON.stringify({ '.sv': { 'increment': 1 } })
   })
     .then(r => r.json())
-    .then(value => { counterEl.textContent = formatCount(value); })
+    .then(value => { currentCount = value; counterEl.textContent = formatCount(value); })
     .catch(err => { console.error('Doodle counter increment failed:', err); });
 }
 
