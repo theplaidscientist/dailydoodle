@@ -31,9 +31,8 @@
   .subtitle { font-size: 15px; color: var(--text-secondary); margin: 2px 0 0; text-align: center; }
   .instruction { text-align: center; font-size: 13px; color: var(--text-secondary); margin: 0 0 1rem; }
   #columns {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 12px;
+    columns: 210px 3;
+    column-gap: 12px;
     margin-bottom: 1.5rem;
   }
   .col-card {
@@ -41,6 +40,9 @@
     border: 0.5px solid var(--border);
     border-radius: 12px;
     padding: 0.875rem;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    margin-bottom: 12px;
   }
   .col-header {
     display: flex;
@@ -128,7 +130,7 @@
     body { padding: 1.5rem 0.75rem; }
     h1 { font-size: 20px; }
     .subtitle, .instruction { font-size: 13px; }
-    #columns { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+    #columns { columns: 150px 2; column-gap: 8px; }
     .col-card { padding: 0.75rem; }
     #result-row { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
     .result-card { font-size: 13px; padding: 0.75rem 0.4rem; }
