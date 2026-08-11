@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Doodle - Ideas for your Noodle!</title>
+<style>
+  :root {
+    --surface-0: #f7f6f2;
+    --surface-1: #f1efe8;
+    --surface-2: #ffffff;
+    --text-primary: #2c2c2a;
+    --text-secondary: #5f5e5a;
+    --text-muted: #888780;
+    --border: #d3d1c7;
+    --radius: 8px;
+    --c-teal-50: #E1F5EE; --c-teal-800: #085041;
+    --c-coral-50: #FAECE7; --c-coral-800: #712B13;
+    --c-purple-50: #EEEDFE; --c-purple-800: #3C3489;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+  h1 { font-size: 22px; font-weight: 500; margin: 0; text-align: center; }
+  .subtitle { font-size: 15px; color: var(--text-secondary); margin: 2px 0 0; text-align: center; }
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin: 1.5rem 0;
+  }
+  .col-card {
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+  .col-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  .item-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  .item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 4px 8px;
+    background: var(--surface-1);
+    border-radius: var(--radius);
+  }
+  .item-row button {
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+  }
+  .add-row { display: flex; gap: 6px; }
+  .add-row input {
+    flex: 1;
+    font-size: 13px;
+    height: 32px;
+    padding: 0 8px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    color: var(--text-primary);
+  }
+  .add-row button, #spin-btn {
+    border: 0.5px solid var(--border);
+    background: var(--surface-2);
+    border-radius: var(--radius);
+    cursor: pointer;
+    color: var(--text-primary);
+  }
+  .add-row button { padding: 0 10px; }
+  .spin-wrap { display: flex; justify-content: center; margin-bottom: 1.5rem; }
+  #spin-btn { font-size: 15px; font-weight: 500; padding: 10px 24px; }
+  #spin-btn:hover, .add-row button:hover { background: var(--surface-1); }
+  .result-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    perspective: 600px;
+    margin-bottom: 1rem;
+  }
+  .result-card {
+    border-radius: 12px;
+    padding: 1rem 0.5rem;
+    text-align: center;
+    font-weight: 500;
+    font-size: 15px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s linear;
+    border: 0.5px solid var(--border);
+  }
+  .card-animal { background: var(--c-teal-50); color: var(--c-teal-800); }
+  .card-job { background: var(--c-coral-50); color: var(--c-coral-800); }
+  .card-prop { background: var(--c-purple-50); color: var(--c-purple-800); }
+  #fill-blank { text-align: center; font-size: 16px; min-height: 24px; margin: 0 0 2rem; }
+  footer { text-align: center; font-size: 12px; color: var(--text-muted); }
+  footer em { font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>Daily Doodle</h1>
+<p class="subtitle">Ideas for your Noodle!</p>
+
+<div class="columns">
+  <div id="col-animal"></div>
+  <div id="col-job"></div>
+  <div id="col-prop"></div>
+</div>
+
+<div class="spin-wrap">
+  <button id="spin-btn">Spin</button>
+</div>
+
+<div id="result-row" class="result-row"></div>
+
+<p id="fill-blank"></p>
+
+<footer><em>Brought to you by the Plaid Scientist from Plaid Labs</em> v0.1</footer>
+
+<script>
+const data = {
+  animal: ["Octopus","Raccoon","Owl","Fox","Turtle","Penguin"],
+  job: ["Detective","Chef","Astronaut","Librarian","Pirate","DJ"],
+  prop: ["Umbrella","Teacup","Boombox","Skateboard","Lantern","Camera"]
+};
+const labels = { animal: "Animal", job: "Occupation", prop: "Prop" };
+const keys = ["animal", "job", "prop"];
+
+function renderColumn(key) {
+  const el = document.getElementById('col-' + key);
+  el.innerHTML = `
+    <div class="col-card">
+      <div class="col-label">${labels[key]}</div>
+      <div id="list-${key}" class="item-list"></div>
+      <div class="add-row">
+        <input type="text" id="input-${key}" placeholder="Add ${labels[key].toLowerCase()}" />
+        <button id="add-${key}">+</button>
+      </div>
+    </div>
+  `;
+  renderItems(key);
+  document.getElementById('add-' + key).onclick = () => addItem(key);
+  document.getElementById('input-' + key).addEventListener('keydown', e => {
+    if (e.key === 'Enter') addItem(key);
+  });
+}
+
+function renderItems(key) {
+  const list = document.getElementById('list-' + key);
+  list.innerHTML = data[key].map((item, i) => `
+    <div class="item-row">
+      <span>${item}</span>
+      <button data-key="${key}" data-idx="${i}" class="rm-btn" aria-label="Remove ${item}">x</button>
+    </div>
+  `).join('');
+  list.querySelectorAll('.rm-btn').forEach(btn => {
+    btn.onclick = () => {
+      const k = btn.getAttribute('data-key');
+      const idx = parseInt(btn.getAttribute('data-idx'));
+      data[k].splice(idx, 1);
+      renderItems(k);
+    };
+  });
+}
+
+function addItem(key) {
+  const input = document.getElementById('input-' + key);
+  const val = input.value.trim();
+  if (!val) return;
+  data[key].push(val);
+  input.value = '';
+  renderItems(key);
+}
+
+keys.forEach(renderColumn);
+
+const row = document.getElementById('result-row');
+row.innerHTML = keys.map(k => `
+  <div class="result-card card-${k}" id="card-${k}">
+    <span id="text-${k}">?</span>
+  </div>
+`).join('');
+
+const fillBlank = document.getElementById('fill-blank');
+let finished = { animal: '', job: '', prop: '' };
+
+function updateSentence() {
+  fillBlank.innerHTML = `Your daily doodle idea is a <strong>${finished.job || '___'}</strong> <strong>${finished.animal || '___'}</strong> with a <strong>${finished.prop || '___'}</strong>.`;
+}
+
+document.getElementById('spin-btn').onclick = () => {
+  if (keys.some(k => data[k].length === 0)) {
+    row.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:var(--text-muted); font-size:14px;">Add at least one item to each category</div>`;
+    return;
+  }
+  fillBlank.textContent = '';
+  keys.forEach((k, i) => {
+    const card = document.getElementById('card-' + k);
+    const text = document.getElementById('text-' + k);
+    let ticks = 0;
+    const baseTicks = 14 + i * 6;
+    function tick() {
+      const pick = data[k][Math.floor(Math.random() * data[k].length)];
+      text.textContent = pick;
+      card.style.transform = ticks % 2 === 0 ? 'rotateX(90deg)' : 'rotateX(0deg)';
+      ticks++;
+      if (ticks < baseTicks) {
+        const progress = ticks / baseTicks;
+        const delay = 90 + progress * progress * 220;
+        setTimeout(tick, delay);
+      } else {
+        card.style.transform = 'rotateX(0deg)';
+        finished[k] = pick;
+        updateSentence();
+      }
+    }
+    tick();
+  });
+};
+</script>
+
+</body>
+</html>
