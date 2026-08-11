@@ -114,7 +114,9 @@
   .toggle-switch .thumb { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform .15s; pointer-events: none; }
   .toggle-switch input:checked ~ .track { background: var(--text-primary); }
   .toggle-switch input:checked ~ .thumb { transform: translateX(14px); }
-  .cat-card.inactive .item-list, .cat-card.inactive .add-row { opacity: 0.35; pointer-events: none; }
+  .cat-card.inactive { padding-bottom: 0.6rem; }
+  .cat-card.inactive .col-header { margin-bottom: 0; }
+  .cat-card.inactive .item-list, .cat-card.inactive .add-row { display: none; }
 
   @media (max-width: 480px) {
     body { padding: 1.5rem 0.75rem; }
@@ -321,13 +323,18 @@ function formatCount(n) {
 fetch(`https://countapi.mileshilliard.com/api/v1/get/${COUNTER_KEY}`)
   .then(r => r.json())
   .then(data => { counterEl.textContent = formatCount(data.value || 0); })
-  .catch(() => { counterEl.textContent = '------'; });
+  .catch(err => { console.error('Doodle counter fetch failed:', err); counterEl.textContent = '------'; });
 
 function incrementCounter() {
   fetch(`https://countapi.mileshilliard.com/api/v1/hit/${COUNTER_KEY}`)
     .then(r => r.json())
     .then(data => { counterEl.textContent = formatCount(data.value); })
-    .catch(() => {});
+    .catch(err => { console.error('Doodle counter increment failed:', err); });
+
+  // Redundant fallback: some blockers allow image pixel requests
+  // even when they block fetch/XHR calls to the same domain.
+  const pixel = new Image();
+  pixel.src = `https://countapi.mileshilliard.com/api/v1/hit/${COUNTER_KEY}?_=${Date.now()}`;
 }
 
 </script>
