@@ -60,9 +60,9 @@
     border-radius: var(--radius);
   }
   .item-row button { border: none; background: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 4px; }
-  .add-row { display: flex; gap: 6px; }
+  .add-row { display: flex; gap: 6px; min-width: 0; }
   .add-row input {
-    flex: 1; font-size: 13px; height: 32px; padding: 0 8px;
+    flex: 1; min-width: 0; font-size: 13px; height: 32px; padding: 0 8px;
     border: 0.5px solid var(--border); border-radius: var(--radius);
     background: var(--surface-2); color: var(--text-primary);
   }
@@ -70,7 +70,8 @@
     border: 0.5px solid var(--border); background: var(--surface-2);
     border-radius: var(--radius); cursor: pointer; color: var(--text-primary);
   }
-  .add-row button { padding: 0 10px; }
+  .add-row button { padding: 0 10px; flex-shrink: 0; }
+  .col-card { overflow: hidden; }
   .spin-wrap { display: flex; justify-content: center; margin-bottom: 1.5rem; }
   #spin-btn { font-size: 15px; font-weight: 500; padding: 10px 24px; }
   #spin-btn:hover, .add-row button:hover { background: var(--surface-1); }
@@ -101,6 +102,17 @@
   .toggle-switch input:checked ~ .track { background: var(--text-primary); }
   .toggle-switch input:checked ~ .thumb { transform: translateX(14px); }
   .cat-card.inactive .item-list, .cat-card.inactive .add-row { opacity: 0.35; pointer-events: none; }
+
+  @media (max-width: 480px) {
+    body { padding: 1.5rem 0.75rem; }
+    h1 { font-size: 20px; }
+    .subtitle, .instruction { font-size: 13px; }
+    #columns { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+    .col-card { padding: 0.75rem; }
+    #result-row { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+    .result-card { font-size: 13px; padding: 0.75rem 0.4rem; }
+    #fill-blank { font-size: 15px; }
+  }
 </style>
 </head>
 <body>
@@ -108,7 +120,7 @@
 <h1>Daily Doodle</h1>
 <p class="subtitle">Ideas for your Noodle!</p>
 
-<p class="instruction">Toggle categories on or off, add/remove your own items, then hit spin.</p>
+<p class="instruction">Toggle categories on or off, add your own items, then hit spin.</p>
 
 <div id="columns"></div>
 
